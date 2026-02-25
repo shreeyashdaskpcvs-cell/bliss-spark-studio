@@ -14,7 +14,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { user, signInWithOtp, verifyOtp } = useAuth();
+  const { user, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -29,7 +29,7 @@ export default function Auth() {
     if (!email.trim()) return;
 
     setIsLoading(true);
-    const { error } = await signInWithOtp(email);
+    const { error } = await sendOtp(email);
     setIsLoading(false);
 
     if (error) {
@@ -121,7 +121,7 @@ export default function Auth() {
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-              We'll send you a verification code to confirm your identity
+              We'll send you a 6-digit verification code to confirm your identity
             </p>
           </form>
         )}
@@ -132,9 +132,9 @@ export default function Auth() {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-xl font-semibold text-foreground">Verify your email</h2>
+              <h2 className="text-xl font-semibold text-foreground">Enter verification code</h2>
               <p className="text-muted-foreground mt-1">
-                Enter the code sent to<br />
+                We sent a 6-digit code to<br />
                 <span className="text-foreground font-medium">{email}</span>
               </p>
             </div>
