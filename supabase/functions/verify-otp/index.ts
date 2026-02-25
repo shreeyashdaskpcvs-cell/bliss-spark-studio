@@ -76,31 +76,49 @@ Deno.serve(async (req) => {
       userId = newUser.user.id;
     }
 
-    // Generate a magic link to create a session (won't be sent, just used for token)
+    // Generate a session directly using admin API
+    // Use signUp with a random password if user is new, or generate link for existing
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: email.toLowerCase(),
+      options: {
+        redirectTo: 'https://bliss-spark-studio.lovable.app',
+      },
     });
 
     if (linkError || !linkData) {
-      throw new Error(`Failed to generate session: ${linkError?.message}`);
+      throw new Error(`Failed to generate link: ${linkError?.message}`);
     }
 
-    // Use the OTP from generateLink to create a session
-    // We need to verify the generated token to get a session
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.verifyOtp({
-      email: email.toLowerCase(),
-      token: linkData.properties.email_otp,
-      type: 'email',
-    });
+    // Verify the generated OTP token server-side to create a real session
+    // This does NOT send any email - it just converts the token into a session
+    const verifyResponse = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        },
+        body: JSON.stringify({
+          type: 'magiclink',
+          token_hash: linkData.properties.hashed_token,
+        }),
+      }
+    );
 
-    if (sessionError || !sessionData.session) {
-      throw new Error(`Failed to create session: ${sessionError?.message}`);
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyResponse.ok || !verifyData.access_token) {
+      throw new Error(`Failed to create session: ${JSON.stringify(verifyData)}`);
     }
 
     return new Response(JSON.stringify({
       success: true,
-      session: sessionData.session,
+      session: {
+        access_token: verifyData.access_token,
+        refresh_token: verifyData.refresh_token,
+      },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
